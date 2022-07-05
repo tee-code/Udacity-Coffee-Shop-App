@@ -17,9 +17,12 @@ CORS(app)
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 !! Running this funciton will add one
 '''
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 # ROUTES
+@app.route('/')
+def index():
+    return 'hello world'
 '''
 @TODO implement endpoint
     GET /drinks
