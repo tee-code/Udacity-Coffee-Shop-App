@@ -1,3 +1,4 @@
+
 import os
 from flask import Flask, request, jsonify, abort
 from sqlalchemy import exc
@@ -22,7 +23,10 @@ db_drop_and_create_all()
 # ROUTES
 @app.route('/')
 def index():
-    return 'hello world'
+    return jsonify({
+        'success': True,
+        'message': 'I am working.'
+    })
 '''
 @TODO implement endpoint
     GET /drinks
@@ -31,6 +35,14 @@ def index():
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks')
+def get_drinks():
+    drinks = Drink.query.all()
+
+    return jsonify({
+        'success': True,
+        'drinks': [drink.short() for drink in drinks]
+    })
 
 
 '''
@@ -41,7 +53,15 @@ def index():
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks-detail')
+@requires_auth('get:drinks-detail')
+def get_drinks_detail(jwt):
+    drinks = Drink.query.all()
 
+    return jsonify({
+        'success': True,
+        'drinks': [drink.long() for drink in drinks]
+    })
 
 '''
 @TODO implement endpoint
@@ -53,6 +73,29 @@ def index():
         or appropriate status code indicating reason for failure
 '''
 
+@app.route('/drinks', methods=['POST'])
+@requires_auth('post:drinks')
+def create_drink(jwt):
+    data = request.get_json()
+
+    #check if title and recipe are not inside data
+
+    if 'title' and 'recipe' not in data:
+        abort(422)
+    
+    title = data['title']
+    recipe_in_json = json.dumps(data['recipe'])
+
+    #create a new drink
+
+    drink = Drink(title=title, recipe=recipe_in_json)
+
+    drink.insert()
+
+    return jsonify({
+        'success': True,
+        'drinks': drink.long()
+    })
 
 '''
 @TODO implement endpoint
@@ -65,7 +108,37 @@ def index():
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
+@app.route('/drinks/<int:id>', methods=['PATCH'])
+@requires_auth('patch:drinks')
+def update_drink(jwt, id):
 
+    drink = Drink.query.get(id, None)
+
+    #check if drink not found by id
+
+    if drink is None:
+        abort(404)
+    
+    #get data from request
+
+    data = request.get_json()
+
+    #check if title is in data before updating
+
+    if data['title']:
+        drink.title = data['title']
+    
+    #check if recipe is in data before updating
+
+    if data['recipe']:
+        drink.recipe = json.dumps(data['recipe'])
+
+    drink.update()
+
+    return jsonify({
+        'success': True,
+        'drink': drink.long()
+    })
 
 '''
 @TODO implement endpoint
@@ -78,6 +151,23 @@ def index():
         or appropriate status code indicating reason for failure
 '''
 
+@app.route('/drinks/<int:id>')
+@requires_auth('delete:drinks')
+def delete_drink(jwt, id):
+
+    #check if drink is found
+
+    drink = Drink.query.get(id, None)
+
+    if drink is None:
+        abort(404)
+
+    drink.delete()
+
+    return jsonify({
+        'success': True,
+        'delete': drink.id
+    })
 
 # Error Handling
 '''
@@ -105,13 +195,33 @@ def unprocessable(error):
 
 '''
 
+@app.errorhandler(404)
+def resource_not_found(error):
+    return jsonify({
+        "success": False,
+        "error": 404,
+        "message": "resource not found"
+    }), 404
+
 '''
 @TODO implement error handler for 404
     error handler should conform to general task above
 '''
-
+@app.errorhandler(401)
+def unauthorized(error):
+    return jsonify({
+        "success": False,
+        "error": 401,
+        "message": "unauthorized"
+    }), 401
 
 '''
 @TODO implement error handler for AuthError
     error handler should conform to general task above
 '''
+@app.errorhandler(AuthError)
+def process_AuthError(error):
+    response = jsonify(error.error)
+    response.status_code = error.status_code
+
+    return response
