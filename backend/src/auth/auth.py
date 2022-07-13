@@ -1,3 +1,4 @@
+from base64 import b64decode
 import json
 from flask import request, _request_ctx_stack, abort
 from functools import wraps
@@ -7,8 +8,7 @@ from urllib.request import urlopen
 
 AUTH0_DOMAIN = 'udacity-nanodegree.us.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'http://localhost:5000'
-
+API_AUDIENCE = 'test'
 
 ## AuthError Exception
 '''
@@ -73,10 +73,12 @@ def get_token_auth_header():
     return true otherwise
 '''
 def check_permissions(permission, payload):
+    
     if 'permissions' not in payload:
+        
         raise AuthError({
             'code': 'invalid_claims',
-            'description': 'Permissions not included in JWT.'
+            'description': 'Permissions not included in the JWT.'
         }, 400)
 
     if permission not in payload['permissions']:
@@ -100,10 +102,12 @@ def check_permissions(permission, payload):
     !!NOTE urlopen has a common certificate error described here: https://stackoverflow.com/questions/50236117/scraping-ssl-certificate-verify-failed-error-for-http-en-wikipedia-org
 '''
 def verify_decode_jwt(token):
+
     jsonurl = urlopen(f'https://{AUTH0_DOMAIN}/.well-known/jwks.json')
     jwks = json.loads(jsonurl.read())
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
+
     if 'kid' not in unverified_header:
         raise AuthError({
             'code': 'invalid_header',
@@ -121,9 +125,10 @@ def verify_decode_jwt(token):
             }
     if rsa_key:
         try:
+            
             payload = jwt.decode(
                 token,
-                rsa_key,
+                rsa_key, 
                 algorithms=ALGORITHMS,
                 audience=API_AUDIENCE,
                 issuer='https://' + AUTH0_DOMAIN + '/'
@@ -142,7 +147,8 @@ def verify_decode_jwt(token):
                 'code': 'invalid_claims',
                 'description': 'Incorrect claims. Please, check the audience and issuer.'
             }, 401)
-        except Exception:
+        except Exception as e:
+            print('error: ', e)
             raise AuthError({
                 'code': 'invalid_header',
                 'description': 'Unable to parse authentication token.'
@@ -151,7 +157,6 @@ def verify_decode_jwt(token):
                 'code': 'invalid_header',
                 'description': 'Unable to find the appropriate key.'
             }, 400)
-
 
 '''
 @TODO implement @requires_auth(permission) decorator method
@@ -180,8 +185,12 @@ def requires_auth(permission=''):
         @wraps(f)
         def wrapper(*args, **kwargs):
             token = get_token_auth_header()
+            # print(token, ' token ')
+            payload = verify_decode_jwt(token)
+            print(payload, ' payload ')
             try:
                 payload = verify_decode_jwt(token)
+                print(payload, ' payload ')
             except:
                 abort(401)
             

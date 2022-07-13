@@ -212,7 +212,7 @@ def unauthorized(error):
     return jsonify({
         "success": False,
         "error": 401,
-        "message": "unauthorized"
+        "message": "unauthorized",
     }), 401
 
 '''
