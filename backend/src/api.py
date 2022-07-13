@@ -151,7 +151,7 @@ def update_drink(jwt, id):
         or appropriate status code indicating reason for failure
 '''
 
-@app.route('/drinks/<int:id>')
+@app.route('/drinks/<int:id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
 def delete_drink(jwt, id):
 
